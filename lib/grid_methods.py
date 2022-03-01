@@ -54,16 +54,13 @@ def jp12(f):
 def di(f):
     return ip1(f)-f
 
-def dim12(f):
-    return f-im1(f)
-
 def dj(f):
     return jp1(f)-f
 
-def djm12(f):
-    return f-jm1(f)
-
 def curl(uo,vo,meshmask):
+    """
+    Vertical curl operator as defined in NEMO
+    """
     Zeta=(ip1(vo)*ip1(meshmask.e2v)-vo*meshmask.e2v-jp1(uo)*jp1(meshmask.e1u)+uo*meshmask.e1u)/meshmask.e1f/meshmask.e2f
     return Zeta
 
@@ -74,9 +71,6 @@ def zint(var,e3):
 def zmean(var,e3):
     var_zmean=zint(var,e3)/e3.sum(dim='lev')
     return var_zmean
-
-def grid_f_to_t(meshmask,var):
-    return var_gridt
 
 def n_point_smoothing(meshmask,var):
     return var_smooth

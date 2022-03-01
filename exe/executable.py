@@ -6,6 +6,7 @@ executable.py
 Executable script that launches:
     - the input data extraction
     - all operations required to get the vorticity balances
+    - the output storage into netcdf files
 
 To run it, type python3 executable.py path_to_namelist.txt
 in my case, path_to_namelist.txt=/home/waldmanr/Bureau/Model/VoBiN/VoBiN/input/namelist_input.txt
