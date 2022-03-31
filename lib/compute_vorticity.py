@@ -12,7 +12,7 @@ import sys
 import os
 sys.path.append(os.path.abspath("../lib"))
 from general_methods import norm
-from grid_methods import gridt_to_f,gridf_to_t,gridu_to_v,gridv_to_u,ip1,jp1,im1,jm1,curl,zint
+from grid_methods import gridt_to_f,gridf_to_t,gridu_to_v,gridv_to_u,ip1,jp1,im1,jm1,curl,zint,rolling_window
 from pvo_methods import masked_f_e3f,f_triads,pvo_offline,pvo_contrib,ztrdpvo_contrib,pvo_contrib_int,Momentum_balances,BT_momentum_balances,Vorticity_balances,BV_balances,Transp_vorticity_balances
 
 rho0=1025
@@ -77,13 +77,15 @@ def compute_vorticity(meshmask,utrd,u,tau):
     curl_utrd_av,curl_utrd2_av=Vorticity_balance(meshmask,utrd_av,utrd_av.tauuo,utrd_av.tauvo,utrd2_av,meshmask.f_u/meshmask.bathy_u,meshmask.f_v/meshmask.bathy_v)
     curl_utrd_transp,curl_utrd2_transp=Vorticity_balance(meshmask,utrd_transp,utrd_transp.tauuo,utrd_transp.tauvo,utrd2_transp,xr.ones_like(meshmask.gphit),xr.ones_like(meshmask.gphit))
 
-    ### 4-point interpolation back to T-grid and ~1000km-smoothing
+    ### 4-point interpolation back to T-grid and ~1000km (+-5-point) smoothing
     ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp=gridftot(ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,meshmask)
+    utrd_s,utrd2_s,utrd_int_s,utrd2_int_s,ztrd_s,ztrd2_s,ztrd_int_s,ztrd2_int_s,curl_utrd_int_s,curl_utrd2_int_s,curl_utrd_av_s,curl_utrd2_av_s,curl_utrd_transp_s,curl_utrd2_transp_s=rollingwindow(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,meshmask.tmask_nan,5)
 
-    ### Diagnosis of dominant balances for all four methods
-    balances=Dynamical_balances(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,meshmask)
+    ### Diagnosis of dominant balances for momentum and vorticity balances, in the T-grid and ~1000km-smoothed
+    ztrd2,balances=Dynamical_balances(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,meshmask)
+    ztrd2_s,balances_s=Dynamical_balances(utrd,utrd2,utrd_int,utrd2_int,ztrd_s,ztrd2_s,ztrd_int_s,ztrd2_int_s,curl_utrd_int_s,curl_utrd2_int_s,curl_utrd_av_s,curl_utrd2_av_s,curl_utrd_transp_s,curl_utrd2_transp_s,meshmask)
 
-    return utrd2,ztrd,ztrd2,ztrd_int,ztrd2_int,utrd2_int,utrd2_av,utrd2_transp,utrd_int,utrd_av,utrd_transp,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,balances
+    return utrd2,ztrd,ztrd2,ztrd_int,ztrd2_int,utrd2_int,utrd2_av,utrd2_transp,utrd_int,utrd_av,utrd_transp,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,balances,balances_s
 
 def pvo_decomposition(meshmask,u):
     """
@@ -95,6 +97,7 @@ def pvo_decomposition(meshmask,u):
     u: u and v velocities
 
     output: utrd2 containing:
+    a copy of uo and vo for convenience
     ui: u velocities on the v-grid as in the EEN scheme
     uinm: u velocities on the v-grid as in the EEN scheme but without applying v-masking
     vi: v velocities on the u-grid as in the EEN scheme
@@ -121,8 +124,8 @@ def pvo_decomposition(meshmask,u):
     u1nm,u2nm,u3nm,u4nm,u1,u2,u3,u4,v1nm,v2nm,v3nm,v4nm,v1,v2,v3,v4,fu1,fu2,fu3,fu4,fv1,fv2,fv3,fv4=pvo_contrib(meshmask,u,ztne,ztnw,ztse,ztsw)
 
     ### Decomposition of the Coriolis trend
-    utrdpvo_phys=xr.where(u.uo!=0,gridv_to_u(u.vo,meshmask.vmask)*meshmask.f_u,np.nan);
-    vtrdpvo_phys=xr.where(u.vo!=0,-gridu_to_v(u.uo,meshmask.umask)*meshmask.f_v,np.nan);
+    utrdpvo_phys=xr.where(u.uo!=0,gridv_to_u(u.vo,meshmask)*meshmask.f_u,np.nan);
+    vtrdpvo_phys=xr.where(u.vo!=0,-gridu_to_v(u.uo,meshmask)*meshmask.f_v,np.nan);
     utrdpvo_num=utrdpvo_full-utrdpvo_phys
     vtrdpvo_num=vtrdpvo_full-vtrdpvo_phys
 
@@ -134,6 +137,8 @@ def pvo_decomposition(meshmask,u):
     utrd2=[]
     for name in utrd_pvo_names:
         utrd2.append(xr.DataArray(eval(name),name=name))
+    utrd2.append(xr.DataArray(u.uo,name='u'))
+    utrd2.append(xr.DataArray(u.vo,name='v'))
     utrd2=xr.merge(utrd2)
 
     return utrd2
@@ -212,8 +217,9 @@ def BT_pvo_decomposition(meshmask,u,utrd2,factor_u,factor_v):
     u1nm,u2nm,u3nm,u4nm,u1,u2,u3,u4,v1nm,v2nm,v3nm,v4nm,v1,v2,v3,v4,fu1,fu2,fu3,fu4,fv1,fv2,fv3,fv4=pvo_contrib_int(meshmask,utrd2,factor_u,factor_v)
 
     ### Decomposition of the Coriolis trend
-    utrdpvo_phys=zint(u.vo*meshmask.f_u,meshmask.e3u_0)/factor_u; utrdpvo_phys.data[utrdpvo_full.data==0]=np.nan;
-    vtrdpvo_phys=-zint(u.uo*meshmask.f_v,meshmask.e3v_0)/factor_v; vtrdpvo_phys.data[vtrdpvo_full.data==0]=np.nan;
+    utrdpvo_phys=zint(xr.where(u.uo!=0,gridv_to_u(u.vo,meshmask)*meshmask.f_u,np.nan),meshmask.e3u_0)/factor_u; utrdpvo_phys.data[utrdpvo_full.data==0]=np.nan;
+    vtrdpvo_phys=zint(xr.where(u.vo!=0,-gridu_to_v(u.uo,meshmask)*meshmask.f_v,np.nan),meshmask.e3v_0)/factor_v; vtrdpvo_phys.data[vtrdpvo_full.data==0]=np.nan;
+
     utrdpvo_num=utrdpvo_full-utrdpvo_phys
     vtrdpvo_num=vtrdpvo_full-vtrdpvo_phys
 
@@ -267,11 +273,51 @@ def gridftot(ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utr
     output:
     all vorticity trends, 4-point averaged from the f-grid to the t-grid
     """
-    
-    names=['ztrd','ztrd2','ztrd_int','ztrd2_int','curl_utrd_int','curl_utrd2_int','curl_utrd_av','curl_utrd2_av','curl_utrd_transp','curl_utrd2_transp']
-    for name in names:
-        exec(name+'=gridf_to_t('+name+',meshmask.e3f)')
+
+    # Unfortunately not iterable because exec() method cannot create local variables. Alternative: loop on a list of Datasets but would degrade readability
+    ztrd=gridf_to_t(ztrd,meshmask.fmask)
+    ztrd2=gridf_to_t(ztrd2,meshmask.fmask)
+    ztrd_int=gridf_to_t(ztrd_int,meshmask.fmask.isel(lev=0))
+    ztrd2_int=gridf_to_t(ztrd2_int,meshmask.fmask.isel(lev=0))
+    curl_utrd_int=gridf_to_t(curl_utrd_int,meshmask.fmask.isel(lev=0))
+    curl_utrd2_int=gridf_to_t(curl_utrd2_int,meshmask.fmask.isel(lev=0))
+    curl_utrd_av=gridf_to_t(curl_utrd_av,meshmask.fmask.isel(lev=0))
+    curl_utrd2_av=gridf_to_t(curl_utrd2_av,meshmask.fmask.isel(lev=0))
+    curl_utrd_transp=gridf_to_t(curl_utrd_transp,meshmask.fmask.isel(lev=0))
+    curl_utrd2_transp=gridf_to_t(curl_utrd2_transp,meshmask.fmask.isel(lev=0))
+
     return ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp
+
+def rollingwindow(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,mask,nb):
+    """
+    +-5-point windowing over x and y dimensions of momentum and vorticity balances.
+
+    input:
+    meshmask: all useful coordinate, grid and mask variables
+    all vorticity trends
+    nb: half width of rolling window (ie: averaging over 2*nb+1 grid points in x and y dimensions)
+
+    output:
+    all vorticity trends, windowed over 2*nb+1 grid points in x and y dimensions
+    """
+
+    # Unfortunately not iterable because exec() method cannot create local variables
+    #utrd=rolling_window(mask,utrd,nb)
+    utrd2=rolling_window(mask,utrd2,nb)
+    utrd_int=rolling_window(mask.isel(lev=0),utrd_int,nb)
+    utrd2_int=rolling_window(mask.isel(lev=0),utrd2_int,nb)
+    ztrd=rolling_window(mask.isel(lev=0),ztrd,nb)
+    ztrd2=rolling_window(mask,ztrd2,nb)
+    ztrd_int=rolling_window(mask.isel(lev=0),ztrd_int,nb)
+    ztrd2_int=rolling_window(mask.isel(lev=0),ztrd2_int,nb)
+    curl_utrd_int=rolling_window(mask.isel(lev=0),curl_utrd_int,nb)
+    curl_utrd2_int=rolling_window(mask.isel(lev=0),curl_utrd2_int,nb)
+    curl_utrd_av=rolling_window(mask.isel(lev=0),curl_utrd_av,nb)
+    curl_utrd2_av=rolling_window(mask.isel(lev=0),curl_utrd2_av,nb)
+    curl_utrd_transp=rolling_window(mask.isel(lev=0),curl_utrd_transp,nb)
+    curl_utrd2_transp=rolling_window(mask.isel(lev=0),curl_utrd2_transp,nb)
+
+    return utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp
 
 def Dynamical_balances(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_int,curl_utrd_int,curl_utrd2_int,curl_utrd_av,curl_utrd2_av,curl_utrd_transp,curl_utrd2_transp,meshmask):
     """
@@ -281,7 +327,9 @@ def Dynamical_balances(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_i
     meshmask: all useful coordinate, grid and mask variables
     all momentum and vorticity trends
 
-    output: balances Dataset containing:
+    output:
+    - ztrd2 complemented with the topographic vortex (depth-average) stretching
+    - balances Dataset containing:
     utrd_balances: 5 main depth-dependent momentum balances
     utrd_int_balances: 6 main depth-integral momentum balances
     ztrd_balances: 6 main depth-dependent vorticity balances
@@ -311,14 +359,14 @@ def Dynamical_balances(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_i
             name='utrd_int_balances')
 
     ### Depth-dependent vorticity balances:
-    ztrd_topo_stretch=xr.ones_like(ztrd2.ztrd_stretchphys)*zint(ztrd2.ztrd_stretchphys*meshmask.tmask,meshmask.e3t_0)/zint(meshmask.tmask,meshmask.e3t_0) # topographic stretching computed as the depth average of the physical vortex stretching
-    ztrd_balances=xr.DataArray(Vorticity_balances(np.abs(ztrd2.ztrd_stretchphys-ztrd_topo_stretch), # physical vortex stretching deduced as the local anomaly with respect to its depth average
+    ztrd2['ztrd_topo_stretch']=xr.ones_like(ztrd2.ztrd_stretchphys)*zint(ztrd2.ztrd_stretchphys*meshmask.tmask,meshmask.e3t_0)/zint(meshmask.tmask,meshmask.e3t_0)*meshmask.tmask_nan # topographic stretching computed as the depth average of the physical vortex stretching
+    ztrd_balances=xr.DataArray(Vorticity_balances(np.abs(ztrd2.ztrd_stretchphys-ztrd2.ztrd_topo_stretch), # physical vortex stretching deduced as the local anomaly with respect to its depth average
             np.abs(ztrd2.ztrd_betaphys),
             np.abs(ztrd2.ztrd_stretchnum+ztrd2.ztrd_betanum),
             np.abs(ztrd.ztrdkeg+ztrd.ztrdrvo+ztrd.ztrdzad),
             np.abs(ztrd.ztrdldf),
             np.abs(ztrd.ztrdzdf+ztrd.ztrdspg),
-            np.abs(ztrd_topo_stretch)),
+            np.abs(ztrd2.ztrd_topo_stretch)),
             name='ztrd_balances')
 
     ### Barotropic vorticity balances:
@@ -364,4 +412,4 @@ def Dynamical_balances(utrd,utrd2,utrd_int,utrd2_int,ztrd,ztrd2,ztrd_int,ztrd2_i
 
     balances=xr.merge([utrd_balances,utrd_int_balances,ztrd_balances,ztrd_int_balances,curl_utrd_int_balances,curl_utrd_av_balances,curl_utrd_transp_balances])
 
-    return balances
+    return ztrd2,balances
