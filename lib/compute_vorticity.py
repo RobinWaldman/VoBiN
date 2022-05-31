@@ -217,7 +217,7 @@ def BT_pvo_decomposition(meshmask,u,utrd2,factor_u,factor_v):
     u1nm,u2nm,u3nm,u4nm,u1,u2,u3,u4,v1nm,v2nm,v3nm,v4nm,v1,v2,v3,v4,fu1,fu2,fu3,fu4,fv1,fv2,fv3,fv4=pvo_contrib_int(meshmask,utrd2,factor_u,factor_v)
 
     ### Decomposition of the Coriolis trend
-    utrdpvo_phys=zint(xr.where(u.uo!=0,gridv_to_u(u.vo,meshmask)*meshmask.f_u,np.nan),meshmask.e3u_0)/factor_u; utrdpvo_phys.data[utrdpvo_full.data==0]=np.nan;
+    utrdpvo_phys=(xr.where(u.uo!=0,gridv_to_u(u.vo,meshmask)*meshmask.f_u,np.nan)*meshmask.e3u_0).sum(dim='lev')/factor_u; utrdpvo_phys.data[utrdpvo_full.data==0]=np.nan;
     vtrdpvo_phys=zint(xr.where(u.vo!=0,-gridu_to_v(u.uo,meshmask)*meshmask.f_v,np.nan),meshmask.e3v_0)/factor_v; vtrdpvo_phys.data[vtrdpvo_full.data==0]=np.nan;
 
     utrdpvo_num=utrdpvo_full-utrdpvo_phys

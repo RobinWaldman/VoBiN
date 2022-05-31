@@ -158,7 +158,7 @@ def ztrdpvo_contrib(utrdpvo_full,vtrdpvo_full,u1nm,u2nm,u3nm,u4nm,u1,u2,u3,u4,v1
             +jp12(fu2)*dj(v2*meshmask.e1u)
             +jp12(fu3)*dj(v3*meshmask.e1u)
             +jp12(fu4)*dj(v4*meshmask.e1u))/meshmask.e1f/meshmask.e2f
-    # Physical vortex stretching: 4-point averaged divergence of horitontal transport computed from unmasked velocities and including also vertical scale factors, times the actual Coriolis parameter
+    # Physical vortex stretching: 4-point averaged divergence of horizontal transport computed from unmasked velocities and including the correct vertical scale factors, times the actual Coriolis parameter
     if len(ztrdpvo2.shape)==3: # in the depth-dependent case, we must multiply by e3u-e3v scale factors to get the horitontal divergence, and then divide by e3f to get an unintegrated vorticity trend
         e3u=meshmask.e3u_0
         e3v=meshmask.e3v_0
@@ -297,7 +297,7 @@ def BT_momentum_balances(utrd_pvo,utrd_pg,utrd_num,utrd_adv,utrd_ldf,utrd_tau,ut
     utrd_int_balances.data[(terms_sorted.data[-1,:,:]==4) | (terms_sorted.data[-2,:,:]==4)]=3
     utrd_int_balances.data[(terms_sorted.data[-1,:,:]==3) | (terms_sorted.data[-2,:,:]==3)]=4
     utrd_int_balances.data[(terms_sorted.data[-1,:,:]==2) | (terms_sorted.data[-2,:,:]==2)]=5
-    utrd_int_balances=xr.where(utrd_pvo!=0,utrd_int_balances,np.nan);
+    utrd_int_balances=xr.where(np.abs(utrd_pvo)<1e6,utrd_int_balances,np.nan);
 
     return utrd_int_balances
 
