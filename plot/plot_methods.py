@@ -63,8 +63,8 @@ def global_quiver(ax,x,y,u,v,name,col):
     u_rot, v_rot = proj.transform_vectors(src_crs,x,y,u/np.cos(y/180*np.pi),v)
     renorm = np.sqrt((u**2 + v**2) / (u_rot**2 + v_rot**2))
     ax.quiver(x[::6,::6],y[::6,::6],u_rot[::6,::6]*renorm[::6,::6],v_rot[::6,::6]*renorm[::6,::6],
-            transform=ccrs.PlateCarree(),color=col,scale=4000,headwidth=2,width=0.002)
-    plt.savefig(name+'.png',bbox_inches='tight',dpi=100)
+            transform=ccrs.PlateCarree(),color=col,scale=1000,headwidth=4,width=0.005)
+    plt.savefig(name+'.png',bbox_inches='tight',dpi=400)
 
 def global_contour(ax,x,y,v,levs,fmt,name,col):
     cs=ax.contour(x,y,v,levs,colors=col,linewidths=1,transform=ccrs.PlateCarree())
@@ -131,4 +131,4 @@ def atl_map_zonal_lines(lons,lats,data,levs,colormap,name):
 
 def atl_line(ax,x,y,name):
     ax.plot(x,y,'k',linewidth=2,transform=ccrs.PlateCarree())
-    plt.savefig(name+'.png',bbox_inches='tight',dpi=100)
+    plt.savefig(name+'.png',bbox_inches='tight',dpi=400)
