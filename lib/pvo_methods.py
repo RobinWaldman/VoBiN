@@ -123,7 +123,7 @@ def ztrdpvo_contrib(utrdpvo_full,vtrdpvo_full,u1nm,u2nm,u3nm,u4nm,u1,u2,u3,u4,v1
     ztrd_stretchtot: offline computation of the full "planetary vortex stretching", ie: the vorticity due to the horizontal divergence as defined in NEMO's EEN scheme
     ztrd_stretchphys: offline computation of the physical "planetary vortex stretching", ie: the vorticity deduced from the actual model horizontal divergence with the correct e3u-e3v scale factors and the unmasked interpolated velocities
     ztrd_stretchnum: deduced as a residual from ztrd_stretchtot-ztrd_stretchphys. Corresponds to the numerical torque due to the model approximations in e3 scale factors and to the masking of velocities in the interpolation procedure
-    ztrd_crossnum: deduced as a residual from ztrdvo2-ztrd_betatot-ztrd_stretchtot. It is non-zero only in the caseof depth-integral balances if there is a vertical covariance between beta and stretching effects.
+    ztrd_crossnum: deduced as a residual from ztrdvo2-ztrd_betatot-ztrd_stretchtot. It is non-zero only in the case of depth-integral balances if there is a vertical covariance between beta and stretching effects.
     """
 
     # Offline computation of the full Coriolis trend vorticity
@@ -138,16 +138,16 @@ def ztrdpvo_contrib(utrdpvo_full,vtrdpvo_full,u1nm,u2nm,u3nm,u4nm,u1,u2,u3,u4,v1
             +jp12(v1*meshmask.e1u)*dj(fu1)
             +jp12(v2*meshmask.e1u)*dj(fu2)
             +jp12(v3*meshmask.e1u)*dj(fu3)
-            +jp12(v4*meshmask.e1u)*dj(fu4))/meshmask.e1f/meshmask.e2f
+            +jp12(v4*meshmask.e1u)*dj(fu4))/meshmask.e1f/meshmask.e2f*ztrd_mask
     # Physical beta effect: 4-point averaged variations of the actual Coriolis parameter times unmasked velocities
-    ztrd_betaphys=-(ip12(u1*meshmask.e2v)*di(jp1(im1(f_v_factor)))
+    ztrd_betaphys=-(ip12(u1nm*meshmask.e2v)*di(jp1(im1(f_v_factor)))
             +ip12(u2nm*meshmask.e2v)*di(jp1(f_v_factor))
             +ip12(u3nm*meshmask.e2v)*di(im1(f_v_factor))
             +ip12(u4nm*meshmask.e2v)*di(f_v_factor)
             +jp12(v1nm*meshmask.e1u)*dj(f_u_factor)
             +jp12(v2nm*meshmask.e1u)*dj(ip1(f_u_factor))
             +jp12(v3nm*meshmask.e1u)*dj(jm1(f_u_factor))
-            +jp12(v4nm*meshmask.e1u)*dj(jm1(ip1(f_u_factor))))/meshmask.e1f/meshmask.e2f
+            +jp12(v4nm*meshmask.e1u)*dj(jm1(ip1(f_u_factor))))/meshmask.e1f/meshmask.e2f*ztrd_mask
     ztrd_betanum=ztrd_betatot-ztrd_betaphys
     # Total vortex stretching: 4-point averaged divergence of horizontal velocities x horizontal scale factors times the model's Coriolis parameter
     ztrd_stretchtot=-(ip12(fv1)*di(u1*meshmask.e2v)
@@ -157,7 +157,7 @@ def ztrdpvo_contrib(utrdpvo_full,vtrdpvo_full,u1nm,u2nm,u3nm,u4nm,u1,u2,u3,u4,v1
             +jp12(fu1)*dj(v1*meshmask.e1u)
             +jp12(fu2)*dj(v2*meshmask.e1u)
             +jp12(fu3)*dj(v3*meshmask.e1u)
-            +jp12(fu4)*dj(v4*meshmask.e1u))/meshmask.e1f/meshmask.e2f
+            +jp12(fu4)*dj(v4*meshmask.e1u))/meshmask.e1f/meshmask.e2f*ztrd_mask
     # Physical vortex stretching: 4-point averaged divergence of horizontal transport computed from unmasked velocities and including the correct vertical scale factors, times the actual Coriolis parameter
     if len(ztrdpvo2.shape)==3: # in the depth-dependent case, we must multiply by e3u-e3v scale factors to get the horitontal divergence, and then divide by e3f to get an unintegrated vorticity trend
         e3u=meshmask.e3u_0
@@ -194,7 +194,7 @@ def pvo_contrib_int(meshmask,utrd2,factor_u,factor_v):
     input:
     meshmask: all useful coordinate, grid and mask variables
     utrd2: offline decomposition of NEMO's Coriolis trend under the EEN scheme
-    factor_u and factor_v: factor associated to f for the computation of depth-dependent and depth-averaged balances (factor 1), depth-averaged balances (factor 1/h) and transport vorticity balances (factor 1/f)
+    factor_u and factor_v: factor associated to f for the computation of depth-dependent and depth-integral balances (factor 1), depth-averaged balances (factor 1/h) and transport vorticity balances (factor 1/f)
 
     output:
     ui: depth-integral u velocities on the v-grid as in the EEN scheme
@@ -204,23 +204,23 @@ def pvo_contrib_int(meshmask,utrd2,factor_u,factor_v):
     fui_mean and fvi_mean: depth average Coriolis parameter on the u-grid and v-grid as in the EEN scheme, times factor_u or factor_v
     """
 
-    u1nm_int=zint(utrd2.u1nm,jp1(im1(meshmask.e3u_0)))
-    u2nm_int=zint(utrd2.u2nm,jp1(meshmask.e3u_0))
-    u3nm_int=zint(utrd2.u3nm,im1(meshmask.e3u_0))
-    u4nm_int=zint(utrd2.u4nm,meshmask.e3u_0)
-    u1_int=zint(utrd2.u1,meshmask.e3v_0)
-    u2_int=zint(utrd2.u2,meshmask.e3v_0)
-    u3_int=zint(utrd2.u3,meshmask.e3v_0)
-    u4_int=zint(utrd2.u4,meshmask.e3v_0)
+    u1nm_int=(utrd2.u1nm*jp1(im1(meshmask.e3u_0))).sum(dim='lev')
+    u2nm_int=(utrd2.u2nm*jp1(meshmask.e3u_0)).sum(dim='lev')
+    u3nm_int=(utrd2.u3nm*im1(meshmask.e3u_0)).sum(dim='lev')
+    u4nm_int=(utrd2.u4nm*meshmask.e3u_0).sum(dim='lev')
+    u1_int=(utrd2.u1*meshmask.e3v_0).sum(dim='lev')
+    u2_int=(utrd2.u2*meshmask.e3v_0).sum(dim='lev')
+    u3_int=(utrd2.u3*meshmask.e3v_0).sum(dim='lev')
+    u4_int=(utrd2.u4*meshmask.e3v_0).sum(dim='lev')
 
-    v1nm_int=zint(utrd2.v1nm,meshmask.e3v_0)
-    v2nm_int=zint(utrd2.v2nm,ip1(meshmask.e3v_0))
-    v3nm_int=zint(utrd2.v3nm,jm1(meshmask.e3v_0))
-    v4nm_int=zint(utrd2.v4nm,jm1(ip1(meshmask.e3v_0)))
-    v1_int=zint(utrd2.v1,meshmask.e3u_0)
-    v2_int=zint(utrd2.v2,meshmask.e3u_0)
-    v3_int=zint(utrd2.v3,meshmask.e3u_0)
-    v4_int=zint(utrd2.v4,meshmask.e3u_0)
+    v1nm_int=(utrd2.v1nm*meshmask.e3v_0).sum(dim='lev')
+    v2nm_int=(utrd2.v2nm*ip1(meshmask.e3v_0)).sum(dim='lev')
+    v3nm_int=(utrd2.v3nm*jm1(meshmask.e3v_0)).sum(dim='lev')
+    v4nm_int=(utrd2.v4nm*jm1(ip1(meshmask.e3v_0))).sum(dim='lev')
+    v1_int=(utrd2.v1*meshmask.e3u_0).sum(dim='lev')
+    v2_int=(utrd2.v2*meshmask.e3u_0).sum(dim='lev')
+    v3_int=(utrd2.v3*meshmask.e3u_0).sum(dim='lev')
+    v4_int=(utrd2.v4*meshmask.e3u_0).sum(dim='lev')
 
     fv1_mean=zmean(utrd2.fv1,meshmask.e3v_0*meshmask.vmask)/factor_v
     fv2_mean=zmean(utrd2.fv2,meshmask.e3v_0*meshmask.vmask)/factor_v

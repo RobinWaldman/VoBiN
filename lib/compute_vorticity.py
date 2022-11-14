@@ -201,7 +201,7 @@ def BT_pvo_decomposition(meshmask,u,utrd2,factor_u,factor_v):
     meshmask: all useful coordinate, grid and mask variables
     u: u and v velocities
     utrd2: offline decomposition of NEMO's Coriolis trend under the EEN scheme
-    factor_u and factor_v: factor associated to f for the computation of depth-dependent and depth-averaged balances (factor 1), depth-averaged balances (factor 1/h) and transport vorticity balances (factor 1/f)
+    factor_u and factor_v: factor associated to f for the computation of depth-dependent and depth-integral balances (factor 1), depth-averaged balances (factor 1/h) and transport vorticity balances (factor 1/f)
 
     output:
     utrd2_int: offline decomposition of NEMO's depth integral Coriolis trend under the EEN scheme
@@ -242,7 +242,7 @@ def BT_momentum_balance(meshmask,utrd,tau,factor_u,factor_v):
     meshmask: all useful coordinate, grid and mask variables
     utrd: all u-trends and v-trends
     tau: zonal and meridional surface wind stress
-    factor_u and factor_v: factor associated to f for the computation of depth-dependent and depth-averaged balances (factor 1), depth-averaged balances (factor 1/h) and transport vorticity balances (factor 1/f)
+    factor_u and factor_v: factor associated to f for the computation of depth-dependent and depth-integral balances (factor 1), depth-averaged balances (factor 1/h) and transport vorticity balances (factor 1/f)
 
     output:
     utrd_int: depth integral of utrd (except for the wind stress which is already depth integral by definition), times factor_u or factor_v (either 1, h or f)
