@@ -13,7 +13,7 @@ import sys
 import os
 import copy
 sys.path.append(os.path.abspath("../lib"))
-from grid_methods import gridt_to_f,curl
+from grid_methods import gridt_to_f,curl2,rolling_window
 
 def extract_data(path_namelist):
     """
@@ -43,10 +43,15 @@ def extract_data(path_namelist):
     meshmask['f_u_nan']=xr.where(meshmask.f_u!=0,meshmask.f_u,np.nan) # to divide momentum trends by f in the transport vorticity equation
     meshmask['f_v']=2*2*np.pi/86400*np.sin(np.radians(meshmask.gphiv)) # for decomposing Coriolis vorticity
     meshmask['f_f']=2*2*np.pi/86400*np.sin(np.radians(meshmask.gphif)) # for computing Coriolis with the EEN scheme
-    meshmask['bathy_u']=(meshmask.umask*meshmask.e3u_0).sum(dim='z') # for computing the depth-average vorticity balance
-    meshmask['bathy_v']=(meshmask.vmask*meshmask.e3v_0).sum(dim='z') # for computing the depth-average vorticity balance
+    #meshmask['bathy_u']=(meshmask.umask*meshmask.e3u_0).sum(dim='z') # for computing the depth-average vorticity balance
+    #meshmask['bathy_v']=(meshmask.vmask*meshmask.e3v_0).sum(dim='z') # for computing the depth-average vorticity balance
+    meshmask['bathy_t']=(meshmask.tmask*meshmask.e3t_0).sum(dim='z') # for visualization purposes
+    meshmask['bathy_u']=rolling_window(meshmask.umask.isel(z=0),(meshmask.umask*meshmask.e3u_0).sum(dim='z'),5) # to reduce grid-scale noise
+    meshmask['bathy_u']=xr.where(meshmask['bathy_u']!=0,meshmask['bathy_u'],np.nan) # to avoid dividing by zero
+    meshmask['bathy_v']=rolling_window(meshmask.vmask.isel(z=0),(meshmask.vmask*meshmask.e3v_0).sum(dim='z'),5) # to reduce grid-scale noise
+    meshmask['bathy_v']=xr.where(meshmask['bathy_v']!=0,meshmask['bathy_v'],np.nan) # to avoid dividing by zero
     meshmask['beta']=2*2*np.pi/86400/(6700*1e3)*np.cos(np.radians(meshmask.gphit)) # for expressing vorticity terms as beta transports
-    meshmask['div_fh']=np.abs(curl(meshmask.f_v/meshmask.bathy_v,-meshmask.f_u/meshmask.bathy_u,meshmask)) # for expressing depth average vorticity terms as transports across f/h contours
+    meshmask['div_fh']=np.abs(curl2(meshmask.f_v/meshmask.bathy_v,-meshmask.f_u/meshmask.bathy_u,meshmask)) # for expressing depth average vorticity terms as transports across f/h contours
     meshmask['fixed_glamt'] = meshmask['glamt'].copy() # ensure strictly increasing glamt with i for visualization purposes
     meshmask.glamt.data[-1,:]=meshmask.glamt.data[-2,:]
     for i, start in enumerate(np.argmax(np.abs(np.diff(meshmask.glamt.data)) > 180, axis=1)):

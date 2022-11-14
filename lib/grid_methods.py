@@ -14,7 +14,7 @@ def gridt_to_f(x_t,tmask):
 
 def gridf_to_t(x_f,fmask):
     """
-    4-point interpolation of variable from t-grid to f-grid
+    4-point interpolation of variable from f-grid to t-grid
     """
     x_t=(x_f*fmask+ip1(jp1(x_f*fmask))+ip1(x_f*fmask)+jp1(x_f*fmask))/4
     return x_t
@@ -68,6 +68,13 @@ def curl(uo,vo,meshmask):
     Zeta=(ip1(vo)*ip1(meshmask.e2v)-vo*meshmask.e2v-jp1(uo)*jp1(meshmask.e1u)+uo*meshmask.e1u)/meshmask.e1f/meshmask.e2f
     return Zeta
 
+def curl2(uo,vo,meshmask):
+    """
+    Used to compute the module of grad(f/h)
+    """
+    Zeta=((ip1(vo)*ip1(meshmask.e2v)-vo*meshmask.e2v)**2+(-jp1(uo)*jp1(meshmask.e1u)+uo*meshmask.e1u)**2)**0.5/meshmask.e1f/meshmask.e2f
+    return Zeta
+
 def zint(var,e3):
     var_zint=(var*e3).sum(dim='lev')
     var_zint=xr.where(var_zint!=0,var_zint,np.nan)
@@ -85,6 +92,10 @@ def rolling_window(mask,var,nb):
 def search_lon(lon0,lon):
     ilon0=np.argmin(np.abs(lon.mean(dim='y')-lon0))
     return ilon0
+
+def search_lat(lat0,lat):
+    ilat0=np.argmin(np.abs(lat.mean(dim='x')-lat0))
+    return ilat0
 
 def ubot(u_norm,meshmask):
     x = np.arange(len(meshmask.x))
