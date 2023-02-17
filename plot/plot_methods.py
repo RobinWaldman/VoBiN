@@ -80,8 +80,8 @@ def atl_zonal(data,mesh,names,ylim,ylabel,title,name,width,xlim):
     cmap = plt.cm.get_cmap('Dark2')
     cols = cmap(np.linspace(0,1,8))
     plt.figure(figsize=(width, 8))
-    plt.rcParams['lines.linewidth'] = 3
-    plt.rcParams.update({'font.size': 18})
+    plt.rcParams['lines.linewidth'] = 4
+    plt.rcParams.update({'font.size': 25})
     plt.plot(mesh.glamt,data.ztrdad, color=cols[0])
     plt.plot(mesh.glamt,data.ztrdldf, color=cols[1])
     plt.plot(mesh.glamt,data.ztrdtau, color=cols[2])
@@ -98,7 +98,7 @@ def atl_zonal(data,mesh,names,ylim,ylabel,title,name,width,xlim):
     plt.title(title)
     plt.savefig(name+'.png',bbox_inches='tight',dpi=100)
     plt.savefig(name+'.eps')
-    plt.legend(names,loc='upper center',fontsize=20)
+    plt.legend(names,loc='upper center',fontsize=25)
     plt.savefig(name+'_leg.eps')
 
 def zonal_profile(data,meshmask,lim):
